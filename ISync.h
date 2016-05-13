@@ -12,6 +12,9 @@ class ISyncEvent
 public:
     virtual ~ISyncEvent() {}
     virtual void OnMoveTo(char x, char y) {}
+    virtual void OnKickTo(char x, char y) {}
+    virtual void OnAttack() {}
+    virtual void OnDead() {}
 };
 
 class ISyncObjQuery
@@ -19,6 +22,7 @@ class ISyncObjQuery
 protected:
     virtual ~ISyncObjQuery() {}
 public:
+    virtual void SetEvtHandle(ISyncEvent* hd) = 0;
     virtual unsigned int Id() const = 0;
     virtual int GetType() const = 0;
 };
@@ -39,9 +43,8 @@ public:
     virtual bool Init() = 0;
     virtual void Release() = 0;
     virtual void Update(unsigned int dt) = 0;
-    virtual bool Bind(unsigned int oid, ISyncEvent* hd) = 0;
 
-    virtual bool AddObj(int type, char x, char y) = 0; //for test
+    virtual bool AddObj(int kind, char x, char y, char camp) = 0; //for test
 };
 
 

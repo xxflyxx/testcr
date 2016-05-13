@@ -7,10 +7,10 @@
 struct Cell
 {
     char m_cost;
-    GObjectPtr m_groundIn;
-    GObjectPtr m_groundCur;
-    GObjectPtr m_skyIn;
-    GObjectPtr m_skyCur;
+    GObjectWPtr m_groundIn;
+    GObjectWPtr m_groundCur;
+    GObjectWPtr m_skyIn;
+    GObjectWPtr m_skyCur;
 
 
 };

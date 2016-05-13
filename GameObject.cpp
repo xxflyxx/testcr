@@ -63,7 +63,12 @@ void GObjectQuery::Remove(const GObjectPtr & ptr)
     m_cont[ptr->GetType()].erase(ptr);
 }
 
-GObject::GObject()
+GObject::GObject(const Pos& pos, int kind, char camp, CellQuery* cellQuery, GObjectQuery* objQuery)
+    : m_lastPos(pos)
+    , m_curPos(pos)
+    , m_camp(camp)
+    , m_cellQuery(cellQuery)
+    , m_objQuery(objQuery)
 {
     static ISyncEvent dummy;
     m_evthd = &dummy;
@@ -84,7 +89,6 @@ GObject::GObject()
     m_health = 100;
     m_pathNode = 0;
     m_pathNodeFrame = 0;
-    m_cellQuery = NULL;
     m_objQuery = NULL;
 }
 
@@ -97,28 +101,28 @@ BVState GObject::SearchTarget(int type, char radius)
     for (auto it = vec.begin(); it != vec.end(); ++it)
     {
         auto cell = m_cellQuery->at(it->x, it->y);
-        if (cell.m_groundCur
-            && cell.m_groundCur->m_camp!= m_camp
-            && cell.m_groundCur->GetType()&type)
+        GObjectPtr groundCur(cell.m_groundCur);
+        if (groundCur
+            && groundCur->m_camp!= m_camp
+            && groundCur->GetType()&type)
         {
-            auto obj = cell.m_groundCur;
-            int dis = m_curPos.Distance(obj->m_curPos) - radius - obj->m_radius;
+            int dis = m_curPos.Distance(groundCur->m_curPos) - radius - groundCur->m_radius;
             if (dis<mindis)
             {
                 mindis = dis;
-                nearestobj = obj;
+                nearestobj = groundCur;
             }
         }
-        if (cell.m_skyCur
-            && cell.m_groundCur->m_camp != m_camp
-            && cell.m_skyCur->GetType()&type)
+        GObjectPtr skyCur(cell.m_skyCur);
+        if (skyCur
+            && skyCur->m_camp != m_camp
+            && skyCur->GetType()&type)
         {
-            auto obj = cell.m_skyCur;
-            int dis = m_curPos.Distance(obj->m_curPos) - radius - obj->m_radius;
+            int dis = m_curPos.Distance(skyCur->m_curPos) - radius - skyCur->m_radius;
             if (dis < mindis)
             {
                 mindis = dis;
-                nearestobj = obj;
+                nearestobj = skyCur;
             }
         }
     }
@@ -208,8 +212,9 @@ BVState GObject::FindPath(int mode)
 }
 
 
-bool GObject::CompareWeight(GObjectPtr obj)
+bool GObject::CompareWeight(GObjectWPtr wobj)
 {
+    GObjectPtr obj(wobj);
     if (!obj)
         return false;
     if (obj.get() == this)
@@ -222,6 +227,42 @@ void GObject::SetEvtHandle(ISyncEvent* hd)
     m_evthd = hd;
 }
 
+void GObject::Update(unsigned int dt)
+{
+    if (m_bv)
+        m_bv->Update(this, dt);
+}
+
+BVState GObject::AttackAni()
+{
+    m_evthd->OnAttack();
+    return BVState_succ;
+}
+
+BVState GObject::Damage(int val)
+{
+    GObjectPtr target(m_target);
+    if (!target)
+        return BVState_fail;
+    target->BeHurt(val);
+    return BVState_succ;
+}
+
+void GObject::BeHurt(int val)
+{
+    m_health-=val;
+    if (m_health<0)
+    {
+        m_evthd->OnDead();
+        ClearSelf();
+    }
+}
+
+void GObject::ClearSelf()
+{
+    m_objQuery->Remove(shared_from_this());
+}
+
 BVState Walker::Move()
 {
     if (m_pathNode >= m_path.size())
@@ -232,23 +273,28 @@ BVState Walker::Move()
         || CompareWeight(cell.m_groundIn))
     {
         m_pathNodeFrame = 0;
+        m_evthd->OnKickTo(m_curPos.x, m_curPos.y);
         return BVState_fail;
     }
     if (++m_pathNodeFrame < m_speed)
         return BVState_running;
-    ++m_pathNode;
-    m_pathNodeFrame = 0;
 
     m_cellQuery->at(m_curPos).m_groundCur.reset();
     m_curPos = next;
+
+    ++m_pathNode;
+    m_pathNodeFrame = 0;
+
     GObjectPtr self = shared_from_this();
     cell.m_groundCur = self;
     cell.m_groundIn.reset();
     if (m_pathNode < m_path.size())
     {
-        Cell& n = m_cellQuery->at(m_path[m_pathNode]);
+        const Pos& p = m_path[m_pathNode];
+        Cell& n = m_cellQuery->at(p);
         if (!CompareWeight(n.m_groundIn))
             n.m_groundIn = self;
+        m_evthd->OnMoveTo(p.x, p.y);
     }
     return BVState_succ;
 }
@@ -263,30 +309,39 @@ BVState Flyer::Move()
         || CompareWeight(cell.m_skyIn))
     {
         m_pathNodeFrame = 0;
+        m_evthd->OnKickTo(m_curPos.x, m_curPos.y);
         return BVState_fail;
-    }
-
-    GObjectPtr self = shared_from_this();
-    if (cell.m_skyIn != self)
-    {
-        if (cell.m_skyIn->m_weight<m_weight)
-            cell.m_skyIn = self;
     }
     if (++m_pathNodeFrame < m_speed)
         return BVState_running;
 
+    m_cellQuery->at(m_curPos).m_skyCur.reset();
+    m_curPos = next;
+
     ++m_pathNode;
     m_pathNodeFrame = 0;
 
-    m_cellQuery->at(m_curPos).m_groundCur.reset();
-    m_curPos = next;
+    GObjectPtr self = shared_from_this();
     cell.m_skyCur = self;
     cell.m_skyIn.reset();
     if (m_pathNode < m_path.size())
     {
-        Cell& n = m_cellQuery->at(m_path[m_pathNode]);
+        const Pos& p = m_path[m_pathNode];
+        Cell& n = m_cellQuery->at(p);
         if (!CompareWeight(n.m_skyIn))
             n.m_skyIn = self;
+        m_evthd->OnMoveTo(p.x, p.y);
     }
+    return BVState_succ;
+}
+
+BVState Bullet::Move()
+{
+    if (m_pathNode >= m_path.size())
+        return BVState_succ;
+    if (++m_pathNodeFrame < m_speed)
+        return BVState_running;
+    ++m_pathNode;
+    m_pathNodeFrame = 0;
     return BVState_succ;
 }

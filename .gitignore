@@ -1,0 +1,12 @@
+*.tlog
+*.obj
+sync.sdf
+sync.vcxproj.user
+*.ipch
+*.pdb
+Debug/vc100.idb
+*.pch
+*.exp
+Debug/sync.ilk
+sync.opensdf
+sync.suo

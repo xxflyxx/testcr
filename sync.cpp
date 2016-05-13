@@ -11,32 +11,40 @@ ISync* ISync::Create(ISyncCB* cb)
 
 bool Sync::Init()
 {
-    auto obj = new GObject();
-    m_objs[0].reset(obj);
-    m_cb->OnNewObject(obj);
+    GObjectPtr obj;//(new GObject());
+    m_objs.Insert(obj);
+    m_cb->OnNewObject(obj.get());
     return true;
 }
 
 void Sync::Release()
 {
+    delete this;
 }
 
 void Sync::Update(unsigned int dt)
 {
-}
-
-bool Sync::Bind(unsigned int oid, ISyncEvent * hd)
-{
-    auto it = m_objs.find(oid);
-    if (it != m_objs.end())
+    for (int i=GObjectType_walker;i<=GObjectType_bullet;i = i<<1)
     {
-        it->second->SetEvtHandle(hd);
-        return true;
+        const auto& objs = m_objs.Get(i);
+        for (auto it=objs.begin();it!=objs.end();++it)
+        {
+            (*it)->Update(dt);
+        }
     }
-    return false;
 }
 
-bool Sync::AddObj(int type, char x, char y)
+bool Sync::AddObj(int kind, char x, char y, char camp)
 {
+    GObjectPtr obj;
+    if (kind < ObjKind_ground_end)
+         obj.reset(new Walker(Pos(x,y), kind, camp, &m_cellQuery, &m_objs));
+    else if (kind < ObjKind_flyer_end)
+        obj.reset(new Flyer(Pos(x,y), kind, camp, &m_cellQuery, &m_objs));
+    else if (kind < ObjKind_bullet_end)
+        obj.reset(new Flyer(Pos(x,y), kind, camp, &m_cellQuery, &m_objs));
+    m_objs.Insert(obj);
+    m_cb->OnNewObject(obj.get());
+
     return true;
 }
