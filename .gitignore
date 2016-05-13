@@ -11,3 +11,12 @@ Debug/sync.ilk
 sync.opensdf
 sync.suo
 Debug/×.×
+*.log
+*.cache
+Debug/sync_manifest.rc
+Debug/sync.dll
+Debug/sync.dll.intermediate.manifest
+*.res
+Debug/sync.lastbuildstate
+Debug/sync.lib
+*.manifest

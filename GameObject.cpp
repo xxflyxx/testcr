@@ -322,7 +322,7 @@ BVState Flyer::Move()
     m_pathNodeFrame = 0;
 
     GObjectPtr self = shared_from_this();
-    cell.m_skyCur = self;
+    cell.m_skyCur = self;// todo: 当前格子的要被挤开
     cell.m_skyIn.reset();
     if (m_pathNode < m_path.size())
     {

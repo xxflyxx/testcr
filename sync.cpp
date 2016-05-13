@@ -11,9 +11,7 @@ ISync* ISync::Create(ISyncCB* cb)
 
 bool Sync::Init()
 {
-    GObjectPtr obj;//(new GObject());
-    m_objs.Insert(obj);
-    m_cb->OnNewObject(obj.get());
+    AddObj(ObjKind_guowang);
     return true;
 }
 
