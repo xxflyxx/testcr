@@ -11,7 +11,8 @@ ISync* ISync::Create(ISyncCB* cb)
 
 bool Sync::Init()
 {
-    AddObj(ObjKind_guowang);
+    AddObj(ObjKind_guowang, 30, 5, Camp_a);
+    AddObj(ObjKind_guowang, 30, 45, Camp_b);
     return true;
 }
 
